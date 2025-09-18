@@ -8,18 +8,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class TextToSQL:
-    def __init__(self, db_path: str = "example.db"):
+class TextToSQLEnhanced:
+    def __init__(self, db_path: str = "demo_meaningless_enhanced.db"):
         self.db_path = db_path
 
         # Configure Gemini
         genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
         self.model = genai.GenerativeModel('gemini-1.5-flash')
 
-        # Initialize database
+        # Initialize database with meaningless column names
         self._init_database()
-
-        # Setup prompts
         self._setup_prompts()
 
     def _create_metadata_table(self):
@@ -40,17 +38,17 @@ class TextToSQL:
             """)
 
     def _insert_sample_metadata(self):
-        """Insert sample metadata for demonstration"""
+        """Insert sample metadata for meaningless columns"""
         metadata_data = [
-            ('departments', 'id', '部门ID', '部门的唯一标识符', 'INTEGER', '1, 2, 3', 0, '主键，自增'),
-            ('departments', 'name', '部门名称', '部门的中文名称', 'TEXT', 'Engineering, Sales', 0, '不能为空'),
-            ('departments', 'location', '办公地点', '部门所在城市', 'TEXT', 'San Francisco', 0, '可为空'),
-            ('employees', 'id', '员工ID', '员工的唯一标识符', 'INTEGER', '1, 2, 3', 0, '主键，自增'),
-            ('employees', 'name', '员工姓名', '员工的全名', 'TEXT', 'John Doe', 0, '不能为空'),
-            ('employees', 'age', '员工年龄', '员工的年龄', 'INTEGER', '30, 28, 35', 0, '必须大于18'),
-            ('employees', 'department_id', '部门ID', '员工所属部门ID', 'INTEGER', '1, 2, 3', 0, '外键，关联departments表'),
-            ('employees', 'salary', '薪资', '员工的年薪', 'REAL', '75000.0, 65000.0', 1, '单位：美元'),
-            ('employees', 'hire_date', '入职日期', '员工入职时间', 'DATE', '2020-01-15', 0, '格式：YYYY-MM-DD')
+            ('t01', 'c001', '员工ID', '员工的唯一标识符', 'INTEGER', '1, 2, 3', 0, '主键，自增'),
+            ('t01', 'c002', '员工姓名', '员工的全名', 'TEXT', 'John Doe', 0, '不能为空'),
+            ('t01', 'c003', '员工年龄', '员工的年龄', 'INTEGER', '30, 28, 35', 0, '必须大于18'),
+            ('t01', 'c004', '部门ID', '员工所属部门ID', 'INTEGER', '1, 2, 3', 0, '外键，关联t02表'),
+            ('t01', 'c005', '薪资', '员工的年薪', 'REAL', '75000.0, 65000.0', 1, '单位：美元'),
+            ('t01', 'c006', '入职日期', '员工入职时间', 'DATE', '2020-01-15', 0, '格式：YYYY-MM-DD'),
+            ('t02', 'c001', '部门ID', '部门的唯一标识符', 'INTEGER', '1, 2, 3', 0, '主键，自增'),
+            ('t02', 'c002', '部门名称', '部门的中文名称', 'TEXT', 'Engineering, Sales', 0, '不能为空'),
+            ('t02', 'c003', '办公地点', '部门所在城市', 'TEXT', 'San Francisco', 0, '可为空')
         ]
 
         with sqlite3.connect(self.db_path) as conn:
@@ -61,50 +59,46 @@ class TextToSQL:
             """, metadata_data)
 
     def _init_database(self):
-        """Initialize SQLite database with sample data"""
+        """Initialize SQLite database with meaningless column names"""
         self.engine = create_engine(f"sqlite:///{self.db_path}")
 
         # Create metadata table
         self._create_metadata_table()
 
-        # Create tables if they don't exist
-        self._create_sample_tables()
-
-        # Insert sample metadata
-        self._insert_sample_metadata()
-
-    def _create_sample_tables(self):
-        """Create sample employee and department tables"""
+        # Create tables with meaningless names
         with sqlite3.connect(self.db_path) as conn:
             conn.executescript("""
-                CREATE TABLE IF NOT EXISTS departments (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    location TEXT
+                CREATE TABLE IF NOT EXISTS t01 (
+                    c001 INTEGER PRIMARY KEY,
+                    c002 TEXT NOT NULL,
+                    c003 INTEGER,
+                    c004 INTEGER,
+                    c005 REAL,
+                    c006 DATE,
+                    FOREIGN KEY (c004) REFERENCES t02(c001)
                 );
 
-                CREATE TABLE IF NOT EXISTS employees (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    age INTEGER,
-                    department_id INTEGER,
-                    salary REAL,
-                    hire_date DATE,
-                    FOREIGN KEY (department_id) REFERENCES departments(id)
+                CREATE TABLE IF NOT EXISTS t02 (
+                    c001 INTEGER PRIMARY KEY,
+                    c002 TEXT NOT NULL,
+                    c003 TEXT
                 );
 
-                INSERT OR IGNORE INTO departments (id, name, location) VALUES
+                INSERT OR IGNORE INTO t02 (c001, c002, c003) VALUES
                 (1, 'Engineering', 'San Francisco'),
                 (2, 'Sales', 'New York'),
                 (3, 'Marketing', 'Los Angeles');
 
-                INSERT OR IGNORE INTO employees (id, name, age, department_id, salary, hire_date) VALUES
+                INSERT OR IGNORE INTO t01 (c001, c002, c003, c004, c005, c006) VALUES
                 (1, 'John Doe', 30, 1, 75000.0, '2020-01-15'),
                 (2, 'Jane Smith', 28, 2, 65000.0, '2021-03-20'),
                 (3, 'Bob Johnson', 35, 1, 85000.0, '2019-07-10'),
                 (4, 'Alice Brown', 32, 3, 70000.0, '2020-11-05'),
                 (5, 'Charlie Wilson', 29, 2, 68000.0, '2022-02-15');
             """)
+
+        # Insert sample metadata
+        self._insert_sample_metadata()
 
     def _setup_prompts(self):
         """Setup prompt template for SQL generation"""
@@ -192,32 +186,43 @@ SQL query:"""
 
         return "\n".join(schema)
 
-    def get_database_schema(self) -> str:
-        """Legacy method - returns basic schema"""
-        return self.get_enhanced_schema()
+    def get_basic_schema(self) -> str:
+        """Get basic schema without metadata (for comparison)"""
+        inspector = inspect(self.engine)
+        schema = []
 
-    def add_column_metadata(self, table_name: str, column_name: str, business_name: str,
-                          description: str, data_type: str = None, example_value: str = None,
-                          is_sensitive: bool = False, business_rules: str = None):
-        """Add or update column metadata"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                INSERT OR REPLACE INTO column_metadata
-                (table_name, column_name, business_name, description, data_type, example_value, is_sensitive, business_rules)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (table_name, column_name, business_name, description, data_type, example_value, is_sensitive, business_rules))
+        for table_name in inspector.get_table_names():
+            if table_name == 'column_metadata':
+                continue
 
-    def remove_column_metadata(self, table_name: str, column_name: str):
-        """Remove column metadata"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                DELETE FROM column_metadata
-                WHERE table_name = ? AND column_name = ?
-            """, (table_name, column_name))
+            columns = inspector.get_columns(table_name)
+            foreign_keys = inspector.get_foreign_keys(table_name)
 
-    def generate_sql(self, question: str) -> str:
+            table_info = f"Table: {table_name}\n"
+            table_info += "Columns:\n"
+
+            for column in columns:
+                col_name = column['name']
+                col_type = str(column['type'])
+                nullable = "NULL" if column['nullable'] else "NOT NULL"
+                primary_key = "PRIMARY KEY" if column['primary_key'] else ""
+                table_info += f"  - {col_name} {col_type} {nullable} {primary_key}\n"
+
+            if foreign_keys:
+                table_info += "Foreign Keys:\n"
+                for fk in foreign_keys:
+                    table_info += f"  - {fk['constrained_columns']} references {fk['referred_table']}({fk['referred_columns']})\n"
+
+            schema.append(table_info)
+
+        return "\n".join(schema)
+
+    def generate_sql(self, question: str, use_metadata: bool = True) -> str:
         """Generate SQL from natural language question"""
-        schema = self.get_database_schema()
+        if use_metadata:
+            schema = self.get_enhanced_schema()
+        else:
+            schema = self.get_basic_schema()
 
         try:
             prompt = self.prompt_template.format(
@@ -241,41 +246,41 @@ SQL query:"""
         except Exception as e:
             return [{"error": str(e)}]
 
-    def query(self, question: str) -> Dict[str, Any]:
-        """Main method: convert natural language to SQL and execute"""
-        sql_query = self.generate_sql(question)
+    def show_comparison(self):
+        """Show comparison between basic and enhanced schema"""
+        print("=== 基础Schema (无元数据) ===")
+        print(self.get_basic_schema())
 
-        if sql_query.startswith("Error"):
-            return {
-                "question": question,
-                "sql_query": None,
-                "results": [],
-                "error": sql_query
-            }
+        print("\n=== 增强Schema (含元数据) ===")
+        print(self.get_enhanced_schema())
 
-        results = self.execute_query(sql_query)
+        print("\n=== 对比测试 ===")
 
-        return {
-            "question": question,
-            "sql_query": sql_query,
-            "results": results,
-            "error": None
-        }
+        test_questions = [
+            "Show me all employees",
+            "Find employees older than 30",
+            "Show employees in the Engineering department",
+            "What is the average salary by department?"
+        ]
+
+        for question in test_questions:
+            print(f"\n问题: {question}")
+
+            # Without metadata
+            print("Without metadata:")
+            sql_without = self.generate_sql(question, use_metadata=False)
+            print(f"  SQL: {sql_without}")
+
+            # With metadata
+            print("With metadata:")
+            sql_with = self.generate_sql(question, use_metadata=True)
+            print(f"  SQL: {sql_with}")
+
+            # Execute the better query
+            if sql_with and not sql_with.startswith("Error"):
+                results = self.execute_query(sql_with)
+                print(f"  Results: {results}")
 
 if __name__ == "__main__":
-    # Example usage
-    text_to_sql = TextToSQL()
-
-    # Test questions
-    questions = [
-        "Show me all employees",
-        "Find employees older than 30",
-        "Show employees in the Engineering department",
-        "What is the average salary by department?"
-    ]
-
-    for question in questions:
-        print(f"\nQuestion: {question}")
-        result = text_to_sql.query(question)
-        print(f"SQL: {result['sql_query']}")
-        print(f"Results: {result['results']}")
+    demo = TextToSQLEnhanced()
+    demo.show_comparison()
