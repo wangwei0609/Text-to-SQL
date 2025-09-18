@@ -173,7 +173,3 @@ Text-to-SQL/
 - `example_value`: 示例值
 - `is_sensitive`: 是否敏感字段
 - `business_rules`: 业务规则
-
-## 许可证
-
-MIT License
